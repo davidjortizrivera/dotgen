@@ -5,38 +5,39 @@
 [![npm](https://img.shields.io/npm/v/@davidjortizrivera/dotgen)](https://www.npmjs.com/package/@davidjortizrivera/dotgen)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
-**One typed config for every project's environment files.** dotgen reads a single TypeScript config that lives on your machine and generates each project's `.env` files, plus TypeScript declarations that always match them.
+I work on a handful of projects at once, and every one of them has its own pile of `.env` files. Most of the values are the same everywhere (the dev database server, the same URLs), so I kept copying them around, and every time something changed I had to remember every repo that had a copy.
+
+dotgen fixes that for me. I keep a single config file on my machine, and dotgen writes each project's `.env` files from it, along with TypeScript types that always match.
 
 ```sh
 cd ~/Projects/myapp
 dotgen development
 ```
 
-For every target in the project (`apps/backend`, `apps/frontend`, …) this writes:
+For each part of the project (`apps/backend`, `apps/frontend`, …) that gives you:
 
-- `.env.development` with the values, gitignored and `chmod 600`
-- `env.d.ts` with the variable types, meant to be committed
-- `env.ts` (optional), a typed nested accessor that converts numbers and booleans back to their real types
+- `.env.development` with the values (gitignored, only readable by you)
+- `env.d.ts` with the types, which you commit
+- optionally `env.ts`, so you can write `env.database.port` and get a real number back instead of a string
 
-Projects don't depend on dotgen at runtime. Bun and Vite keep loading their `.env` files the way they always have, so uninstalling dotgen breaks nothing.
+Your projects don't depend on dotgen at all. Bun and Vite keep reading their `.env` files like they always did, so if you stop using it, nothing breaks.
 
-## Why
+## Why I built it
 
-- **Ports collide.** Every project starts on `5173`, and Vite silently moves to the next free port. That breaks OAuth redirect URIs and hard-coded URLs, and there's no single place that shows which project uses which port.
-- **The same values are copied everywhere.** The same database server and URLs live in N repos, so changing one means editing N files.
-- **Values get corrupted.** Bun expands `$` inside values, *even inside double quotes*. A 12-character password with a `$` in position 9 arrived with 8 characters, and the only symptom was "Login failed".
-- **Types drift.** `vite-env.d.ts` and `ProcessEnv` are maintained by hand and never quite match the real `.env` files.
+A few things kept biting me:
 
-## Features
+- **Ports.** Every new Vite project wants port `5173`. When two are running, Vite quietly picks another port, and then the OAuth redirect stops working and I spend ten minutes figuring out why. dotgen gives each project its own ports and complains if two projects ever collide.
+- **A password that lost characters.** Bun expands `$` inside `.env` values, even inside double quotes. I had a 12-character database password with a `$` in it, and the app was getting 8 characters. All I saw was "Login failed". dotgen escapes values the way each loader (Bun, Vite, Node) expects, and refuses values it can't write safely instead of silently mangling them.
+- **Types that drift.** I was keeping `vite-env.d.ts` up to date by hand and it was never quite right. Now the types come from the same place as the values.
 
-- **Port registry:** each project gets a port seed (backend = seed + 1, frontend = seed + 2). dotgen fails if any two projects share a port, so nothing shifts silently.
-- **Loader-aware escaping:** values are escaped for the loader that will read them (Bun, Vite, or Node), based on an [escape matrix](scripts/escape-matrix.sh) tested against all three. Values no loader can read unambiguously are rejected instead of being silently mangled.
-- **Layered values:** `shared` values per environment, computed values from a `derive` function (URLs built from ports, for example), and per-project overrides, deep-merged in that order.
-- **Generated types:** `env.d.ts` is the union of every environment, so variables missing from some environments become optional, and CI can typecheck without any `.env` file.
-- **`dotgen import`:** reads existing `.env` files and writes them into the config by editing only the necessary text. Your comments, formatting, and `derive` functions stay intact.
-- **`dotgen share`:** finds values repeated across projects and moves the ones you pick into `shared`, then checks that no project's output changed unexpectedly.
-- **Secrets stay hidden:** values whose names match `*PASSWORD*`, `*SECRET*`, `*TOKEN*`, or `*KEY*` are never printed, only their length (`set (12 chars)`), which is enough to spot a truncated value.
-- **Safe writes:** dotgen won't overwrite a `.env` it didn't generate unless you pass `--force`, and it warns when a generated file isn't gitignored.
+## What it does
+
+- **Ports:** give a project a seed and it gets its ports from it (backend = seed + 1, frontend = seed + 2). `dotgen ports` shows the whole table.
+- **Shared values:** put common values in `shared` once; projects can override them, and a `derive` function can build values like URLs from the ports.
+- **Import what you already have:** `dotgen import` reads your existing `.env` files into the config. It only touches the lines it needs, so your comments and formatting stay put.
+- **Spot duplicates:** `dotgen share` finds values repeated across projects and offers to move them into `shared`.
+- **Secrets stay out of your terminal:** anything that looks like a password, secret, token, or key is shown only by its length (`set (12 chars)`), which is still enough to notice a truncated value.
+- **Careful writes:** it won't overwrite a `.env` file it didn't create unless you pass `--force`, and it warns you if a generated file isn't gitignored.
 
 ## Install
 
