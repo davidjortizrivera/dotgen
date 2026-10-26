@@ -1,0 +1,65 @@
+{
+	"name": "@davidjortizrivera/dotgen",
+	"version": "0.1.0",
+	"description": "One typed config for every project's environment files: generates .env files and TypeScript declarations from a single global config.",
+	"keywords": [
+		"dotenv",
+		"env",
+		"environment-variables",
+		"cli",
+		"typescript",
+		"bun",
+		"vite"
+	],
+	"author": "David J. Ortiz-Rivera",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/davidjortizrivera/dotgen.git"
+	},
+	"bugs": {
+		"url": "https://github.com/davidjortizrivera/dotgen/issues"
+	},
+	"homepage": "https://github.com/davidjortizrivera/dotgen#readme",
+	"type": "module",
+	"bin": {
+		"dotgen": "dist/cli.js"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"os": [
+		"darwin",
+		"linux"
+	],
+	"engines": {
+		"node": ">=22.18"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json && chmod +x dist/cli.js",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"prepublishOnly": "bun run typecheck && bun run test && bun run build"
+	},
+	"dependencies": {
+		"@clack/prompts": "^1.8.1",
+		"oxc-parser": "^0.151.0",
+		"zod": "^4.6.5"
+	},
+	"devDependencies": {
+		"@oxc-project/types": "0.151.0",
+		"@types/node": "^26.6.2",
+		"typescript": "^7.0.2",
+		"vitest": "^5.0.1"
+	},
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	}
+}
